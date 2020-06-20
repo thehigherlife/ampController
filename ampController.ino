@@ -25,7 +25,7 @@ long trebOldPosition = 0;
 long balOldPosition = -999;
 long sourceOldPosition = -999;
 long time = 0;         // the last time the output pin was toggled
-long debounce = 200;   // the debounce time, increase if the output flickers
+long debounce = 400;   // the debounce time, increase if the output flickers
 //volumes stuff
 int volButton; //the current state of the volume button
 int volume = 33;
@@ -33,21 +33,15 @@ long volOldPosition  = -999;
 bool muted = 0; //determine if we're currently muted
 bool trebORbass = 1; //am i changing bass or treb, true  for bass  
 int btButton; // the current stat of the btButton
+bool systemon = 0; // is the system on?
+int sourceButton; // the current stat of the source button
 
 void setup(){
   Serial.begin(9600);
   Serial.println("starting program");
   Wire.begin();
-  audioChip.initialize(0,true);//source 1,mute on
-  audioChip.gain(0);//gain 0...11.27 db
-  audioChip.source(0);//select your source 0...3
-  audioChip.loudness(true);//true or false
-  audioChip.bass(0);//bass -7...+7
-  audioChip.treble(0);//treble -7...+7
-  audioChip.balance(0);//-31...+31
-  audioChip.volume(33);//Vol 0...62 : 63=muted
-  Serial.println("made it to the end");
-  Serial.println("Preamp setup done");
+  Serial.println("Wire begins");
+  
   //setting up buttons on rotary dials
   delay(5000);
   mcp.begin();      // use default address 0
@@ -55,8 +49,11 @@ void setup(){
   mcp.pinMode(volButtonPin, INPUT); 
   mcp.digitalWrite(volButtonPin, HIGH);
   mcp.pinMode(btButtonPin, INPUT); 
+  mcp.digitalWrite(btButtonPin, HIGH);
   mcp.pinMode(sourceButtonPin, INPUT); 
+  mcp.digitalWrite(sourceButtonPin, HIGH);
   mcp.pinMode(balButtonPin, INPUT); 
+  mcp.digitalWrite(balButtonPin, HIGH);
   volEnc.write(volume * 2); //set the encoder to default volume
   //set output for LED
   mcp.pinMode(ledpin1, OUTPUT);
@@ -64,147 +61,162 @@ void setup(){
   mcp.pinMode(ledpin3, OUTPUT);
   mcp.pinMode(ledpin4, OUTPUT);
   mcp.pinMode(ledpin5, OUTPUT);
+  Serial.println("setup done");
 }
 
 
 
 void loop(){
-  //Serial.println("i am looping");
-  //code for volume (division and multiple is to change sensitivity of encoder)
-  long volNewPosition = volEnc.read();
-  if (volNewPosition != volOldPosition) {
-    volOldPosition = volNewPosition;
-    volume = constrain(volOldPosition/2, 0, 62);
-    audioChip.volume(volume);
-    if (volNewPosition / 2 > 62 | volNewPosition < 0){
-      volEnc.write(volume * 2); // don't let that encoder get out of bounds
-    }
-    Serial.println(volume);
-    
-  }
-  //code for mute (division and multiple is to change sensitivity of encoder)
-  volButton = mcp.digitalRead(volButtonPin);
-  if (volButton == LOW && millis() - time > debounce) {
-    if (muted == 1){
+  if (systemon){
+    //Serial.println("i am looping");
+    //code for volume (division and multiple is to change sensitivity of encoder)
+    long volNewPosition = volEnc.read();
+    if (volNewPosition != volOldPosition) {
+      volOldPosition = volNewPosition;
+      volume = constrain(volOldPosition/2, 0, 62);
       audioChip.volume(volume);
-      muted = 0;
-      Serial.print("un muted");
-    } else {
-      audioChip.volume(63);
-      muted = 1;
-      Serial.print("muted");
-    }
-    Serial.println(" volbutton pressed");
-    time = millis();
-  }
-  //code for bass (division and multiple is to change sensitivity of encoder)
-  
-  if (trebORbass) {
-    long bassNewPosition = btEnc.read();
-    if (bassNewPosition != bassOldPosition) {
-      bassOldPosition = bassNewPosition;
-      int bass = constrain(bassOldPosition / 4, -7, 7);
-      figureOutLEDarray (bass, -7, 7);
-      audioChip.bass(bass);
-      if (abs(bassNewPosition / 4) > abs(7)){
-        btEnc.write(bass * 4); // don't let that bass get out of bounds
+      if (volNewPosition / 2 > 62 | volNewPosition < 0){
+        volEnc.write(volume * 2); // don't let that encoder get out of bounds
       }
-      Serial.print("bass set: ");
-      Serial.println(bass);
+      Serial.println(volume);
+      
     }
-  }
-  if (trebORbass == false) {
-    //code for treble (division and multiple is to change sensitivity of encoder)
-    long trebNewPosition = btEnc.read();
-    if (trebNewPosition != trebOldPosition) {
-      trebOldPosition = trebNewPosition;
-      int treb = constrain(trebOldPosition / 4, -7, 7);
-      figureOutLEDarray (treb, -7, 7);
-      audioChip.treble(treb);
-      if (abs(trebNewPosition / 4) > abs(7)){
-        btEnc.write(treb * 4); //don't let that treb get out of bounds
+    //code for mute (division and multiple is to change sensitivity of encoder)
+    volButton = mcp.digitalRead(volButtonPin);
+    if (volButton == LOW && millis() - time > debounce) {
+      if (muted == 1){
+        audioChip.volume(volume);
+        muted = 0;
+        Serial.print("un muted");
+      } else {
+        audioChip.volume(63);
+        muted = 1;
+        Serial.print("muted");
       }
-      Serial.print("treb set: ");
-      Serial.println(treb);
+      Serial.println(" volbutton pressed");
+      time = millis();
     }
-  }
+    //code for bass (division and multiple is to change sensitivity of encoder)
+    
+    if (trebORbass) {
+      long bassNewPosition = btEnc.read();
+      if (bassNewPosition != bassOldPosition) {
+        bassOldPosition = bassNewPosition;
+        int bass = constrain(bassOldPosition / 4, -7, 7);
+        figureOutLEDarray (bass, -7, 7);
+        audioChip.bass(bass);
+        if (abs(bassNewPosition / 4) > abs(7)){
+          btEnc.write(bass * 4); // don't let that bass get out of bounds
+        }
+        Serial.print("bass set: ");
+        Serial.println(bass);
+      }
+    }
+    if (trebORbass == false) {
+      //code for treble (division and multiple is to change sensitivity of encoder)
+      long trebNewPosition = btEnc.read();
+      if (trebNewPosition != trebOldPosition) {
+        trebOldPosition = trebNewPosition;
+        int treb = constrain(trebOldPosition / 4, -7, 7);
+        figureOutLEDarray (treb, -7, 7);
+        audioChip.treble(treb);
+        if (abs(trebNewPosition / 4) > abs(7)){
+          btEnc.write(treb * 4); //don't let that treb get out of bounds
+        }
+        Serial.print("treb set: ");
+        Serial.println(treb);
+      }
+    }
     //code for treb or bass
-  btButton = mcp.digitalRead(btButtonPin);
-  if (btButton == LOW && millis() - time > debounce) {
-    if (trebORbass == 1){
-      trebORbass = 0;
-      btEnc.write(trebOldPosition);
-      Serial.print("treble flag set");
-    } else {
-      trebORbass = 1;
-      btEnc.write(bassOldPosition);
-      Serial.print("bass flag set");
+    btButton = mcp.digitalRead(btButtonPin);
+    if (btButton == LOW && millis() - time > debounce) {
+      if (trebORbass == 1){
+        trebORbass = 0;
+        btEnc.write(trebOldPosition);
+        Serial.print("treble flag set");
+      } else {
+        trebORbass = 1;
+        btEnc.write(bassOldPosition);
+        Serial.print("bass flag set");
+      }
+      Serial.println(" btButton pressed");
+      time = millis();
     }
-    Serial.println(" btButton pressed");
-    time = millis();
-  }
-
-    //code for source control (division and multiple is to change sensitivity of encoder)
-  long sourceNewPosition = sourceEnc.read();
-  if (sourceNewPosition != sourceOldPosition) {
-    sourceOldPosition = sourceNewPosition;
-    int source = constrain(sourceOldPosition / 4, 0, 2);
-    switch (source)
-    {
-    case 0:
-      updateLEDarray (1, true);
-      updateLEDarray (2, false);
-      updateLEDarray (3, false);
-      updateLEDarray (4, false);
-      updateLEDarray (5, false);
-      break;
-    case 1:
-      updateLEDarray (1, true);
-      updateLEDarray (2, true);
-      updateLEDarray (3, false);
-      updateLEDarray (4, false);
-      updateLEDarray (5, false);
-      break;
-    case 2:
-      updateLEDarray (1, true);
-      updateLEDarray (2, true);
-      updateLEDarray (3, true);
-      updateLEDarray (4, false);
-      updateLEDarray (5, false);
-    default:
-      break;
+      //code for source control (division and multiple is to change sensitivity of encoder)
+    long sourceNewPosition = sourceEnc.read();
+    if (sourceNewPosition != sourceOldPosition) {
+      sourceOldPosition = sourceNewPosition;
+      int source = constrain(sourceOldPosition / 4, 0, 2);
+      switch (source)
+      {
+      case 0:
+        updateLEDarray (1, true);
+        updateLEDarray (2, false);
+        updateLEDarray (3, false);
+        updateLEDarray (4, false);
+        updateLEDarray (5, false);
+        break;
+      case 1:
+        updateLEDarray (1, true);
+        updateLEDarray (2, true);
+        updateLEDarray (3, false);
+        updateLEDarray (4, false);
+        updateLEDarray (5, false);
+        break;
+      case 2:
+        updateLEDarray (1, true);
+        updateLEDarray (2, true);
+        updateLEDarray (3, true);
+        updateLEDarray (4, false);
+        updateLEDarray (5, false);
+      default:
+        break;
+      }
+      
+      if (sourceNewPosition / 4 > abs(2)){
+        sourceEnc.write(source * 4); //don't let that source get out of bounds
+      }
+      Serial.print("Source:");
+      Serial.println(source);
     }
-    
-    if (sourceNewPosition / 4 > abs(2)){
-      sourceEnc.write(source * 4); //don't let that source get out of bounds
+    //code for balance (division and multiple is to change sensitivity of encoder)
+    long balNewPosition = balEnc.read();
+    if (balNewPosition != balOldPosition) {
+      balOldPosition = balNewPosition;
+      int bal = constrain(balOldPosition / 2, -31, 31);
+      audioChip.balance(bal);
+      figureOutLEDarray (bal, -31, 31);
+      Serial.println(bal);
+      if (balNewPosition /2 > abs(31)){
+        balEnc.write(bal * 2); // don't let that bal get out of bounds
+      }
     }
-    Serial.print("Source:");
-    Serial.println(source);
-  }
-  //code for balance (division and multiple is to change sensitivity of encoder)
-  long balNewPosition = balEnc.read();
-  if (balNewPosition != balOldPosition) {
-    balOldPosition = balNewPosition;
-    int bal = constrain(balOldPosition / 2, -31, 31);
-    audioChip.balance(bal);
-    figureOutLEDarray (bal, -31, 31);
-    Serial.println(bal);
-    if (balNewPosition /2 > abs(31)){
-      balEnc.write(bal * 2); // don't let that bal get out of bounds
-    }
-    
-  }
-}  
-
+  } else {
+        sourceButton = mcp.digitalRead(sourceButtonPin);
+        Serial.println(sourceButton);
+        if (sourceButton == LOW && millis() - time > debounce) {
+          if (systemon == 0){
+            systemon = 1;
+            Serial.print("system powering on, ");
+            setupAudioChip();
+            Serial.println("power up complete!");
+          } else {
+            systemon = 0;
+            Serial.print("system powering off");
+          }
+          Serial.println(" sourceButton pressed");
+          time = millis();
+        }
+      }
+}
 int updateLEDarray (int lednum, bool ledstate){
   lednum = lednum - 1; //so i don't have to remember array pos vs led number
   if (ledstate == false){
     mcp.digitalWrite(ledpins[lednum], LOW);
   } else {
     mcp.digitalWrite(ledpins[lednum], HIGH);
+    }
   }
-}
-
 int figureOutLEDarray (int currentPOS, int minValue, int maxValue ){
   int absminValue = abs(minValue); //if value is negative make it positive
   int ledBucket = 0;
@@ -291,4 +303,17 @@ int figureOutLEDarray (int currentPOS, int minValue, int maxValue ){
       break;
   }
 
+}
+
+void setupAudioChip () {
+  Serial.println("Starting the Audio audioChip");
+  audioChip.initialize(0,true);//source 1,mute on
+  audioChip.gain(0);//gain 0...11.27 db
+  audioChip.source(0);//select your source 0...3
+  audioChip.bass(0);//bass -7...+7
+  audioChip.treble(0);//treble -7...+7
+  audioChip.balance(0);//-31...+31
+  audioChip.volume(33);//Vol 0...62 : 63=muted
+  audioChip.loudness(true);//true or false
+  Serial.println("AudioChip setup complete");
 }

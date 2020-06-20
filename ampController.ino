@@ -66,6 +66,12 @@ void setup(){
   mcp.pinMode(ledpin3, OUTPUT);
   mcp.pinMode(ledpin4, OUTPUT);
   mcp.pinMode(ledpin5, OUTPUT);
+  //turn off all LEDs
+  updateLEDarray (1, false);
+  updateLEDarray (2, false);
+  updateLEDarray (3, false);
+  updateLEDarray (4, false);
+  updateLEDarray (5, false);
   Serial.println("setup done");
 }
 
@@ -345,7 +351,7 @@ int figureOutLEDarray (int currentPOS, int minValue, int maxValue ){
       updateLEDarray (2, false);
       updateLEDarray (3, false);
       updateLEDarray (4, false);
-      updateLEDarray (5, false);
+      updateLEDarray (5, true);
       break;
     default:
       updateLEDarray (1, true);

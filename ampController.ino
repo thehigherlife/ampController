@@ -36,6 +36,9 @@ bool trebORbass = 1; //am i changing bass or treb, true  for bass
 int btButton; // the current stat of the btButton
 bool systemon = 0; // is the system on?
 int sourceButton; // the current stat of the source button
+// sensitvity modifiers
+const int moresense = 2; // this is used to make the vol, bal encoders less sensitive
+const int lesssense = 4; // this is used to make the bass, treb less sensitive
 
 void setup(){
   Serial.begin(9600);
@@ -56,7 +59,7 @@ void setup(){
   mcp.digitalWrite(sourceButtonPin, HIGH);
   mcp.pinMode(balButtonPin, INPUT); 
   mcp.digitalWrite(balButtonPin, HIGH);
-  volEnc.write(volume * 2); //set the encoder to default volume
+  volEnc.write(volume * moresense); //set the encoder to default volume
   //set output for LED
   mcp.pinMode(ledpin1, OUTPUT);
   mcp.pinMode(ledpin2, OUTPUT);
@@ -77,8 +80,8 @@ void loop(){
       volOldPosition = volNewPosition;
       volume = constrain(volOldPosition/2, 0, 62);
       audioChip.volume(volume);
-      if (volNewPosition / 2 > 62 | volNewPosition < 0){
-        volEnc.write(volume * 2); // don't let that encoder get out of bounds
+      if (volNewPosition / moresense > 62 | volNewPosition < 0){
+        volEnc.write(volume * moresense); // don't let that encoder get out of bounds
       }
       Serial.println(volume);
       
@@ -104,11 +107,11 @@ void loop(){
       long bassNewPosition = btEnc.read();
       if (bassNewPosition != bassOldPosition) {
         bassOldPosition = bassNewPosition;
-        int bass = constrain(bassOldPosition / 4, -7, 7);
+        int bass = constrain(bassOldPosition / lesssense, -7, 7);
         figureOutLEDarray (bass, -7, 7);
         audioChip.bass(bass);
-        if (abs(bassNewPosition / 4) > abs(7)){
-          btEnc.write(bass * 4); // don't let that bass get out of bounds
+        if (abs(bassNewPosition / lesssense) > abs(7)){
+          btEnc.write(bass * lesssense); // don't let that bass get out of bounds
         }
         Serial.print("bass set: ");
         Serial.println(bass);
@@ -119,11 +122,11 @@ void loop(){
       long trebNewPosition = btEnc.read();
       if (trebNewPosition != trebOldPosition) {
         trebOldPosition = trebNewPosition;
-        int treb = constrain(trebOldPosition / 4, -7, 7);
+        int treb = constrain(trebOldPosition / lesssense, -7, 7);
         figureOutLEDarray (treb, -7, 7);
         audioChip.treble(treb);
-        if (abs(trebNewPosition / 4) > abs(7)){
-          btEnc.write(treb * 4); //don't let that treb get out of bounds
+        if (abs(trebNewPosition / lesssense) > abs(7)){
+          btEnc.write(treb * lesssense); //don't let that treb get out of bounds
         }
         Serial.print("treb set: ");
         Serial.println(treb);
@@ -136,10 +139,46 @@ void loop(){
         trebORbass = 0;
         btEnc.write(trebOldPosition);
         Serial.print("treble flag set");
+        updateLEDarray (1, true);
+        updateLEDarray (2, true);
+        updateLEDarray (3, true);
+        updateLEDarray (4, true);
+        updateLEDarray (5, true);
+        delay(50);
+        updateLEDarray (1, false);
+        updateLEDarray (2, false);
+        updateLEDarray (3, false);
+        updateLEDarray (4, false);
+        updateLEDarray (5, false);
+        delay(50);
+        updateLEDarray (1, true);
+        updateLEDarray (2, true);
+        updateLEDarray (3, true);
+        updateLEDarray (4, true);
+        updateLEDarray (5, true);
+        figureOutLEDarray (trebOldPosition / lesssense, -7, 7);
       } else {
         trebORbass = 1;
         btEnc.write(bassOldPosition);
         Serial.print("bass flag set");
+        updateLEDarray (1, true);
+        updateLEDarray (2, true);
+        updateLEDarray (3, true);
+        updateLEDarray (4, true);
+        updateLEDarray (5, true);
+        delay(50);
+        updateLEDarray (1, false);
+        updateLEDarray (2, false);
+        updateLEDarray (3, false);
+        updateLEDarray (4, false);
+        updateLEDarray (5, false);
+        delay(50);
+        updateLEDarray (1, true);
+        updateLEDarray (2, true);
+        updateLEDarray (3, true);
+        updateLEDarray (4, true);
+        updateLEDarray (5, true);
+        figureOutLEDarray (bassOldPosition / lesssense, -7, 7);
       }
       Serial.println(" btButton pressed");
       time = millis();
@@ -148,7 +187,7 @@ void loop(){
     long sourceNewPosition = sourceEnc.read();
     if (sourceNewPosition != sourceOldPosition) {
       sourceOldPosition = sourceNewPosition;
-      int source = constrain(sourceOldPosition / 4, 0, 2);
+      int source = constrain(sourceOldPosition / lesssense, 0, 2);
       switch (source)
       {
       case 0:
@@ -175,8 +214,8 @@ void loop(){
         break;
       }
       
-      if (sourceNewPosition / 4 > abs(2)){
-        sourceEnc.write(source * 4); //don't let that source get out of bounds
+      if (sourceNewPosition / lesssense > abs(2)){
+        sourceEnc.write(source * lesssense); //don't let that source get out of bounds
       }
       Serial.print("Source:");
       Serial.println(source);
@@ -185,12 +224,13 @@ void loop(){
     long balNewPosition = balEnc.read();
     if (balNewPosition != balOldPosition) {
       balOldPosition = balNewPosition;
-      int bal = constrain(balOldPosition / 2, -31, 31);
+      int bal = constrain(balOldPosition / moresense, -31, 31);
       audioChip.balance(bal);
       figureOutLEDarray (bal, -31, 31);
+      Serial.print("balance: ");
       Serial.println(bal);
       if (balNewPosition /2 > abs(31)){
-        balEnc.write(bal * 2); // don't let that bal get out of bounds
+        balEnc.write(bal * moresense); // don't let that bal get out of bounds
       }
     }
   }

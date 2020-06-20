@@ -20,8 +20,8 @@ const int ledpin3=2;//ledpin for 3rd LED for b/t/b array
 const int ledpin4=1;//ledpin for 4th LED for b/t/b array 
 const int ledpin5=0;//ledpin for 5th LED for b/t/b array 
 const int ledpins[] = {ledpin1,ledpin2,ledpin3,ledpin4,ledpin5};
-long bassOldPosition = -999;
-long trebOldPosition = -999;
+long bassOldPosition = 0;
+long trebOldPosition = 0;
 long balOldPosition = -999;
 long sourceOldPosition = -999;
 long time = 0;         // the last time the output pin was toggled
@@ -57,7 +57,7 @@ void setup(){
   mcp.pinMode(btButtonPin, INPUT); 
   mcp.pinMode(sourceButtonPin, INPUT); 
   mcp.pinMode(balButtonPin, INPUT); 
-  volEnc.write(volume * 4); //set the encoder to default volume
+  volEnc.write(volume * 2); //set the encoder to default volume
   //set output for LED
   mcp.pinMode(ledpin1, OUTPUT);
   mcp.pinMode(ledpin2, OUTPUT);
@@ -106,7 +106,7 @@ void loop(){
       int bass = constrain(bassOldPosition / 4, -7, 7);
       figureOutLEDarray (bass, -7, 7);
       audioChip.bass(bass);
-      if (bassNewPosition / 4 > abs(7)){
+      if (abs(bassNewPosition / 4) > abs(7)){
         btEnc.write(bass * 4); // don't let that bass get out of bounds
       }
       Serial.print("bass set: ");
@@ -121,7 +121,7 @@ void loop(){
       int treb = constrain(trebOldPosition / 4, -7, 7);
       figureOutLEDarray (treb, -7, 7);
       audioChip.treble(treb);
-      if (trebNewPosition / 4 > abs(7)){
+      if (abs(trebNewPosition / 4) > abs(7)){
         btEnc.write(treb * 4); //don't let that treb get out of bounds
       }
       Serial.print("treb set: ");
@@ -133,9 +133,11 @@ void loop(){
   if (btButton == LOW && millis() - time > debounce) {
     if (trebORbass == 1){
       trebORbass = 0;
+      btEnc.write(trebOldPosition);
       Serial.print("treble flag set");
     } else {
       trebORbass = 1;
+      btEnc.write(bassOldPosition);
       Serial.print("bass flag set");
     }
     Serial.println(" btButton pressed");

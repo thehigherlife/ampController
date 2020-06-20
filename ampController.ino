@@ -246,6 +246,11 @@ void loop(){
     } else {
       systemon = 0;
       digitalWrite(relaypin, LOW);
+      updateLEDarray (1, false);
+      updateLEDarray (2, false);
+      updateLEDarray (3, false);
+      updateLEDarray (4, false);
+      updateLEDarray (5, false);
       Serial.print("system powering off");
     }
     Serial.println(" sourceButton pressed");

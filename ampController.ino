@@ -14,6 +14,7 @@ const int sourceButtonPin=15;// treble rotart button pin on mcp
 const int volButtonPin=14;//volume rotary button pin on mcp
 const int btButtonPin=13;// bass rotary button pin on mcp
 const int balButtonPin=12;// balance rotary button pin on mcp
+const int relaypin=11; //pin that relay controller is set to 
 const int ledpin1=4; //ledpin for 1st LED for b/t/b array 
 const int ledpin2=3; //ledpin for 2nd LED for b/t/b array 
 const int ledpin3=2;//ledpin for 3rd LED for b/t/b array 
@@ -43,9 +44,10 @@ void setup(){
   Serial.println("Wire begins");
   
   //setting up buttons on rotary dials
-  delay(5000);
+  delay(1000);
   mcp.begin();      // use default address 0
   //set input pins for the rotary encoders
+  pinMode(11, OUTPUT);
   mcp.pinMode(volButtonPin, INPUT); 
   mcp.digitalWrite(volButtonPin, HIGH);
   mcp.pinMode(btButtonPin, INPUT); 
@@ -191,24 +193,26 @@ void loop(){
         balEnc.write(bal * 2); // don't let that bal get out of bounds
       }
     }
-  } else {
-        sourceButton = mcp.digitalRead(sourceButtonPin);
-        Serial.println(sourceButton);
-        if (sourceButton == LOW && millis() - time > debounce) {
-          if (systemon == 0){
-            systemon = 1;
-            Serial.print("system powering on, ");
-            setupAudioChip();
-            Serial.println("power up complete!");
-          } else {
-            systemon = 0;
-            Serial.print("system powering off");
-          }
-          Serial.println(" sourceButton pressed");
-          time = millis();
-        }
-      }
+  }
+  sourceButton = mcp.digitalRead(sourceButtonPin);
+  if (sourceButton == LOW && millis() - time > debounce) {
+    if (systemon == 0){
+      systemon = 1;
+      Serial.print("system powering on, ");
+      digitalWrite(relaypin, HIGH);
+      delay(5000);
+      setupAudioChip();
+      Serial.println("power up complete!");
+    } else {
+      systemon = 0;
+      digitalWrite(relaypin, LOW);
+      Serial.print("system powering off");
+    }
+    Serial.println(" sourceButton pressed");
+    time = millis();
+  }
 }
+
 int updateLEDarray (int lednum, bool ledstate){
   lednum = lednum - 1; //so i don't have to remember array pos vs led number
   if (ledstate == false){
@@ -222,13 +226,17 @@ int figureOutLEDarray (int currentPOS, int minValue, int maxValue ){
   int ledBucket = 0;
   int totalValue = absminValue + maxValue; // find out how many positions there are
   int numPerBucket = totalValue / 8 + (totalValue % 9 !=0); // round up if there is a remainder, find out how many numbers are in each of the  buckets
-  currentPOS = map(currentPOS, minValue, maxValue, 1, totalValue);
-  if (currentPOS > (totalValue/2)+1){ // if its greater than the mean, it needs to push to higher number
-     ledBucket = ((float)currentPOS/numPerBucket)+1.9;
-  } else // its less than half, so it doesn't need to bump as much 
-  {
-     ledBucket = ((float)currentPOS/numPerBucket)+1;
-  }
+  if (currentPOS == 0) {
+    ledBucket = 5; // can do this because i want to force it to be in the middle 
+  } else {
+    currentPOS = map(currentPOS, minValue, maxValue, 1, totalValue);
+    if (currentPOS > (totalValue/2)+1){ // if its greater than the mean, it needs to push to higher number
+       ledBucket = ((float)currentPOS/numPerBucket)+1.9;
+    } else // its less than half, so it doesn't need to bump as much 
+      {
+       ledBucket = ((float)currentPOS/numPerBucket)+1;
+      }
+    }
   //start the logic based on which bucket it goes into
   switch (ledBucket){
     case 1:

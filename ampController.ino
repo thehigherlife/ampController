@@ -25,6 +25,7 @@ long bassOldPosition = 0;
 long trebOldPosition = 0;
 long balOldPosition = -999;
 long sourceOldPosition = -999;
+int oldSource = 0; // whats the old source, don't want to keep updating for no reason
 long time = 0;         // the last time the output pin was toggled
 long debounce = 400;   // the debounce time, increase if the output flickers
 //volumes stuff
@@ -194,30 +195,34 @@ void loop(){
     if (sourceNewPosition != sourceOldPosition) {
       sourceOldPosition = sourceNewPosition;
       int source = constrain(sourceOldPosition / lesssense, 0, 2);
-      switch (source)
-      {
-      case 0:
-        updateLEDarray (1, true);
-        updateLEDarray (2, false);
-        updateLEDarray (3, false);
-        updateLEDarray (4, false);
-        updateLEDarray (5, false);
-        break;
-      case 1:
-        updateLEDarray (1, true);
-        updateLEDarray (2, true);
-        updateLEDarray (3, false);
-        updateLEDarray (4, false);
-        updateLEDarray (5, false);
-        break;
-      case 2:
-        updateLEDarray (1, true);
-        updateLEDarray (2, true);
-        updateLEDarray (3, true);
-        updateLEDarray (4, false);
-        updateLEDarray (5, false);
-      default:
-        break;
+      if (oldSource =! source){
+        oldSource = source;
+        switch (source)
+        {
+        case 0:
+          updateLEDarray (1, true);
+          updateLEDarray (2, false);
+          updateLEDarray (3, false);
+          updateLEDarray (4, false);
+          updateLEDarray (5, false);
+          break;
+        case 1:
+          updateLEDarray (1, true);
+          updateLEDarray (2, true);
+          updateLEDarray (3, false);
+          updateLEDarray (4, false);
+          updateLEDarray (5, false);
+          break;
+        case 2:
+          updateLEDarray (1, true);
+          updateLEDarray (2, true);
+          updateLEDarray (3, true);
+          updateLEDarray (4, false);
+          updateLEDarray (5, false);
+        default:
+          break;
+        }
+      audioChip.source(source);
       }
       
       if (sourceNewPosition / lesssense > abs(2)){
@@ -248,6 +253,11 @@ void loop(){
       digitalWrite(relaypin, HIGH);
       delay(5000);
       setupAudioChip();
+      updateLEDarray (1, false);
+      updateLEDarray (2, false);
+      updateLEDarray (3, true);
+      updateLEDarray (4, false);
+      updateLEDarray (5, false);
       Serial.println("power up complete!");
     } else {
       systemon = 0;

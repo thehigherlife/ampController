@@ -2,25 +2,39 @@
 #include <Encoder.h>
 #include "Adafruit_MCP23017.h"
 #include <Wire.h>
-
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+ #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
+#endif 
 
 PT2313 audioChip;
 Adafruit_MCP23017 mcp;
+//these pins are all on the arduino
 Encoder sourceEnc(9, 8);
 Encoder volEnc(7, 6);
 Encoder btEnc(5, 4);
 Encoder balEnc(3, 2);
-const int sourceButtonPin=15;// treble rotart button pin on mcp
-const int volButtonPin=14;//volume rotary button pin on mcp
-const int btButtonPin=13;// bass rotary button pin on mcp
-const int balButtonPin=12;// balance rotary button pin on mcp
-const int relaypin=11; //pin that relay controller is set to 
+const int relaypin=10; //pin that relay controller is set to 
+const int neo_LED =11; //pin for neopixel
+const int neoCount = 8; // how many neopixels are on the strip
+// Declare our NeoPixel strip object:
+Adafruit_NeoPixel strip(neoCount, neo_LED, NEO_GRB + NEO_KHZ800);
+// Argument 1 = Number of pixels in NeoPixel strip
+// Argument 2 = Arduino pin number (most are valid)
+// Argument 3 = Pixel type flags, add together as needed:
+//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
+// these pins are all on the mcp
 const int ledpin1=4; //ledpin for 1st LED for b/t/b array 
 const int ledpin2=3; //ledpin for 2nd LED for b/t/b array 
 const int ledpin3=2;//ledpin for 3rd LED for b/t/b array 
 const int ledpin4=1;//ledpin for 4th LED for b/t/b array 
 const int ledpin5=0;//ledpin for 5th LED for b/t/b array 
 const int ledpins[] = {ledpin1,ledpin2,ledpin3,ledpin4,ledpin5};
+const int sourceButtonPin=15;// treble rotart button pin on mcp
+const int volButtonPin=14;//volume rotary button pin on mcp
+const int btButtonPin=13;// bass rotary button pin on mcp
+const int balButtonPin=12;// balance rotary button pin on mcp
 long bassOldPosition = 0;
 long trebOldPosition = 0;
 long balOldPosition = -999;
@@ -45,6 +59,7 @@ void setup(){
   Serial.begin(9600);
   Serial.println("starting program");
   Wire.begin();
+  Wire.setWireTimeout(1000, true);
   Serial.println("Wire begins");
   
   //setting up buttons on rotary dials
@@ -73,6 +88,14 @@ void setup(){
   updateLEDarray (3, false);
   updateLEDarray (4, false);
   updateLEDarray (5, false);
+  //initialize neopixel
+  strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
+  strip.show();            // Turn OFF all pixels ASAP
+  strip.setBrightness(25); // Set BRIGHTNESS to about 1/5 (max = 255)
+  strip.clear();
+  strip.setPixelColor(1,strip.Color(255,0,0));
+  strip.show();
+  Serial.println("neopixel setup complete");
   Serial.println("setup done");
 }
 
@@ -87,6 +110,7 @@ void loop(){
       volOldPosition = volNewPosition;
       volume = constrain(volOldPosition/2, 0, 62);
       audioChip.volume(volume);
+      volumeLED(volume);
       if (volNewPosition / moresense > 62 | volNewPosition < 0){
         volEnc.write(volume * moresense); // don't let that encoder get out of bounds
       }
@@ -98,12 +122,14 @@ void loop(){
     if (volButton == LOW && millis() - time > debounce) {
       if (muted == 1){
         audioChip.volume(volume);
+        volumeLED(volume);
         muted = 0;
         Serial.print("un muted");
       } else {
         audioChip.volume(63);
         muted = 1;
         Serial.print("muted");
+        volumeLED(volume);
       }
       Serial.println(" volbutton pressed");
       time = millis();
@@ -179,12 +205,6 @@ void loop(){
         updateLEDarray (3, false);
         updateLEDarray (4, false);
         updateLEDarray (5, false);
-        delay(50);
-        updateLEDarray (1, true);
-        updateLEDarray (2, true);
-        updateLEDarray (3, true);
-        updateLEDarray (4, true);
-        updateLEDarray (5, true);
         figureOutLEDarray (bassOldPosition / lesssense, -7, 7);
       }
       Serial.println(" btButton pressed");
@@ -195,7 +215,10 @@ void loop(){
     if (sourceNewPosition != sourceOldPosition) {
       sourceOldPosition = sourceNewPosition;
       int source = constrain(sourceOldPosition / lesssense, 0, 2);
-      if (oldSource =! source){
+      Serial.print(oldSource);
+      Serial.print(" --- ");
+      Serial.println(source);
+      if (oldSource != source){
         oldSource = source;
         switch (source)
         {
@@ -251,13 +274,13 @@ void loop(){
       systemon = 1;
       Serial.print("system powering on, ");
       digitalWrite(relaypin, HIGH);
-      delay(5000);
+      strip.setPixelColor(1,strip.Color(0,255,0));
+      strip.show();
+      delay(2000);
+      rainbow(5);
+      strip.clear();
+      strip.show();
       setupAudioChip();
-      updateLEDarray (1, false);
-      updateLEDarray (2, false);
-      updateLEDarray (3, true);
-      updateLEDarray (4, false);
-      updateLEDarray (5, false);
       Serial.println("power up complete!");
     } else {
       systemon = 0;
@@ -267,7 +290,11 @@ void loop(){
       updateLEDarray (3, false);
       updateLEDarray (4, false);
       updateLEDarray (5, false);
+      strip.clear();
+      strip.setPixelColor(1,strip.Color(255,0,0));
+      strip.show();
       Serial.print("system powering off");
+
     }
     Serial.println(" sourceButton pressed");
     time = millis();
@@ -385,4 +412,48 @@ void setupAudioChip () {
   audioChip.volume(33);//Vol 0...62 : 63=muted
   audioChip.loudness(true);//true or false
   Serial.println("AudioChip setup complete");
+}
+
+void rainbow(int wait) {
+  // Hue of first pixel runs 5 complete loops through the color wheel.
+  // Color wheel has a range of 65536 but it's OK if we roll over, so
+  // just count from 0 to 5*65536. Adding 256 to firstPixelHue each time
+  // means we'll make 5*65536/256 = 1280 passes through this outer loop:
+  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
+    for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
+      // Offset pixel hue by an amount to make one full revolution of the
+      // color wheel (range of 65536) along the length of the strip
+      // (strip.numPixels() steps):
+      int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
+      // strip.ColorHSV() can take 1 or 3 arguments: a hue (0 to 65535) or
+      // optionally add saturation and value (brightness) (each 0 to 255).
+      // Here we're using just the single-argument hue variant. The result
+      // is passed through strip.gamma32() to provide 'truer' colors
+      // before assigning to each pixel:
+      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
+    }
+    strip.show(); // Update strip with new contents
+    delay(wait);  // Pause for a moment
+  }
+}
+
+void volumeLED(int volume){
+  int howmanypixels = volume / 8;
+  Serial.print("which bucket:");
+  Serial.println(howmanypixels);
+  strip.clear();
+  if (muted == 1){
+    for (int i = 0; i <= howmanypixels; i++)
+    {
+      strip.setPixelColor(i, strip.Color(map(volume,0,62,0,255),0,0));  
+    }
+    strip.show();
+  } else
+  {  
+    for (int i = 0; i <= howmanypixels; i++)
+    {
+      strip.setPixelColor(i, strip.Color(0,map(volume,0,62,0,255),0));  
+    }
+    strip.show();
+  }  
 }

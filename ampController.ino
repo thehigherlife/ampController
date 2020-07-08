@@ -10,12 +10,12 @@
 PT2313 audioChip;
 Adafruit_MCP23017 mcp;
 //these pins are all on the arduino
-Encoder sourceEnc(9, 8);
-Encoder volEnc(7, 6);
-Encoder btEnc(5, 4);
+Encoder sourceEnc(4, 5);
+Encoder volEnc(8, 9);
+Encoder btEnc(6, 7);
 Encoder balEnc(3, 2);
-const int relaypin=10; //pin that relay controller is set to 
-const int neo_LED =11; //pin for neopixel
+const int relaypin=11; //pin that relay controller is set to 
+const int neo_LED =10; //pin for neopixel
 const int neoCount = 8; // how many neopixels are on the strip
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(neoCount, neo_LED, NEO_GRB + NEO_KHZ800);
@@ -32,9 +32,9 @@ const int ledpin4=1;//ledpin for 4th LED for b/t/b array
 const int ledpin5=0;//ledpin for 5th LED for b/t/b array 
 const int ledpins[] = {ledpin1,ledpin2,ledpin3,ledpin4,ledpin5};
 const int sourceButtonPin=15;// treble rotart button pin on mcp
-const int volButtonPin=14;//volume rotary button pin on mcp
+const int volButtonPin=12;//volume rotary button pin on mcp
 const int btButtonPin=13;// bass rotary button pin on mcp
-const int balButtonPin=12;// balance rotary button pin on mcp
+const int balButtonPin=14;// balance rotary button pin on mcp
 long bassOldPosition = 0;
 long trebOldPosition = 0;
 long balOldPosition = -999;

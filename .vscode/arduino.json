@@ -2,6 +2,6 @@
     "programmer": "AVRISP mkII",
     "board": "arduino:avr:nano",
     "configuration": "cpu=atmega328old",
-    "port": "/dev/tty.usbserial-14210",
+    "port": "/dev/tty.usbserial-14110",
     "sketch": "ampController.ino"
 }
